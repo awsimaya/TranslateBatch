@@ -1,0 +1,15 @@
+﻿
+@{
+    ViewData["Title"] = "Blog Home";
+    @model List<BlogModel>
+}
+
+<h2>Blog Home</h2>
+
+@foreach (BlogModel item in Model)
+{
+    <h2> @item.blogTitle</h2>
+    <p>@item.blogContent</p>
+    <hr />
+}
+

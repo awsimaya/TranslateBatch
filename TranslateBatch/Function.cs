@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 using Amazon.Lambda.Core;
 using Amazon.Lambda.S3Events;
 using Amazon.S3;
+using Amazon.S3.Model;
 using Amazon.S3.Util;
+using Amazon.Translate;
+using Amazon.Translate.Model;
+
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
@@ -35,7 +40,7 @@ namespace TranslateBatch
         {
             this.S3Client = s3Client;
         }
-        
+
         /// <summary>
         /// This method is called for every Lambda invocation. This method takes in an S3 event object and can be used 
         /// to respond to S3 notifications.
@@ -46,19 +51,55 @@ namespace TranslateBatch
         public async Task<string> FunctionHandler(S3Event evnt, ILambdaContext context)
         {
             var s3Event = evnt.Records?[0].S3;
-            if(s3Event == null)
+            if (s3Event == null)
             {
                 return null;
             }
 
             try
             {
-                var response = await this.S3Client.GetObjectMetadataAsync(s3Event.Bucket.Name, s3Event.Object.Key);
-                return response.Headers.ContentType;
+                String content;
+
+                using (var s3Client = new AmazonS3Client())
+                {
+                    GetObjectRequest request = new GetObjectRequest();
+
+                    request.BucketName = evnt.Records.First().S3.Bucket.Name;
+                    request.Key = evnt.Records.First().S3.Object.Key;
+
+                    GetObjectResponse response = await s3Client.GetObjectAsync(request);
+
+                    StreamReader reader = new StreamReader(response.ResponseStream);
+                    content = reader.ReadToEnd();
+
+                    //LambdaLogger.Log(content);
+
+                    using (var translateClient = new AmazonTranslateClient())
+                    {
+                        var translateTextResponse = await translateClient.TranslateTextAsync(
+                            new Amazon.Translate.Model.TranslateTextRequest()
+                            {
+                                Text = content,
+                                SourceLanguageCode = "EN",
+                                TargetLanguageCode = "ES"
+                            });
+                        //LambdaLogger.Log(translateTextResponse.TranslatedText);
+                        //LambdaLogger.Log(evnt.Records.First().S3.Object.Key);
+
+                        await S3Client.PutObjectAsync(new PutObjectRequest()
+                        {
+                            ContentBody = translateTextResponse.TranslatedText,
+                            BucketName = $"{evnt.Records.First().S3.Bucket.Name}",
+                            Key = evnt.Records.First().S3.Object.Key.Replace("EN", "ES")
+                        });
+
+                    }
+                    LambdaLogger.Log("Success");
+                    return "Complete";
+                }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                context.Logger.LogLine($"Error getting object {s3Event.Object.Key} from bucket {s3Event.Bucket.Name}. Make sure they exist and your bucket is in the same region as this function.");
                 context.Logger.LogLine(e.Message);
                 context.Logger.LogLine(e.StackTrace);
                 throw;
