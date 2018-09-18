@@ -8,7 +8,6 @@ using Amazon.Lambda.Core;
 using Amazon.Lambda.S3Events;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.S3.Util;
 using Amazon.Translate;
 using Amazon.Translate.Model;
 
@@ -62,39 +61,35 @@ namespace TranslateBatch
 
                 using (var s3Client = new AmazonS3Client())
                 {
-                    GetObjectRequest request = new GetObjectRequest();
-
-                    request.BucketName = evnt.Records.First().S3.Bucket.Name;
-                    request.Key = evnt.Records.First().S3.Object.Key;
+                    GetObjectRequest request = new GetObjectRequest
+                    {
+                        BucketName = evnt.Records.First().S3.Bucket.Name,
+                        Key = evnt.Records.First().S3.Object.Key
+                    };
 
                     GetObjectResponse response = await s3Client.GetObjectAsync(request);
 
                     StreamReader reader = new StreamReader(response.ResponseStream);
                     content = reader.ReadToEnd();
 
-                    //LambdaLogger.Log(content);
-
                     using (var translateClient = new AmazonTranslateClient())
                     {
                         var translateTextResponse = await translateClient.TranslateTextAsync(
-                            new Amazon.Translate.Model.TranslateTextRequest()
+                            new TranslateTextRequest()
                             {
                                 Text = content,
                                 SourceLanguageCode = "EN",
                                 TargetLanguageCode = "ES"
                             });
-                        //LambdaLogger.Log(translateTextResponse.TranslatedText);
-                        //LambdaLogger.Log(evnt.Records.First().S3.Object.Key);
 
                         await S3Client.PutObjectAsync(new PutObjectRequest()
                         {
                             ContentBody = translateTextResponse.TranslatedText,
-                            BucketName = $"{evnt.Records.First().S3.Bucket.Name}",
+                            BucketName = evnt.Records.First().S3.Bucket.Name,
                             Key = evnt.Records.First().S3.Object.Key.Replace("EN", "ES")
                         });
 
                     }
-                    LambdaLogger.Log("Success");
                     return "Complete";
                 }
             }

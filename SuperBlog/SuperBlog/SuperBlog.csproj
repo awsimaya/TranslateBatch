@@ -11,6 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Views\Blog\Failure.cshtml">
+      <Pack>$(IncludeRazorContentInPack)</Pack>
+    </Content>
     <Content Update="Views\Blog\Success.cshtml">
       <Pack>$(IncludeRazorContentInPack)</Pack>
     </Content>

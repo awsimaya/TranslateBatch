@@ -1,7 +1,7 @@
 
 {
     "comment" : "This file is used to help set default values when using the dotnet CLI extension Amazon.ElasticBeanstalk.Tools. For more information run \"dotnet eb --help\" from the project root.",
-    "profile" : "imayadev-profile",
+    "profile" : "imaya-appuser",
     "region"  : "us-east-1",
     "application" : "SuperBlog",
     "environment" : "SuperBlog-prod",
@@ -14,5 +14,6 @@
     "key-pair"         : "linuxAMI",
     "iis-website"      : "Default Web Site",
     "app-path"         : "/",
-    "enable-xray"      : false
+    "enable-xray"      : true,
+    "instance-profile" : "aws-elasticbeanstalk-ec2-role"
 }

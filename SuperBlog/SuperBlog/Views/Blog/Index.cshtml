@@ -1,15 +1,18 @@
 ﻿
 @{
     ViewData["Title"] = "Blog Home";
-    @model List<BlogModel>
+    @model List<PostModel>
 }
 
-<h2>Blog Home</h2>
+<h2>Home</h2>
+<hr />
 
-@foreach (BlogModel item in Model)
+@foreach (PostModel item in Model)
 {
-    <h2> @item.blogTitle</h2>
-    <p>@item.blogContent</p>
+    <h2 style="color:darkcyan"> @item.postTitle</h2>
+    <label style="color:cadetblue">@item.postTime UTC</label>
+    <p>@item.postContent</p>
+
     <hr />
 }
 

@@ -1,64 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-
-using Amazon.S3;
-using Amazon.S3.Model;
-using System.IO;
 using SuperBlog.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace SuperBlog.Controllers
 {
     public class BlogController : Controller
     {
         const string BUCKETNAME = "imaya-blog-content";
-        List<BlogModel> Blogs = new List<BlogModel>();
+        List<PostModel> Posts = new List<PostModel>();
 
         // GET: Blog
         public ActionResult Index([FromQuery]string lang)
         {
-            Task.WaitAll(GetBlogs(lang ?? "EN"));
-            return View("Index", Blogs);
+            return View("Index", GetPosts(lang ?? "EN").Result);
         }
 
-        private async Task<List<BlogModel>> GetBlogs(string lang)
+        private async Task<List<PostModel>> GetPosts(string lang)
         {
-            using (var s3Client = new AmazonS3Client())
+            try
             {
-                var listObjectsAsyncResponse = await s3Client.ListObjectsAsync(new ListObjectsRequest()
+                using (var s3Client = new AmazonS3Client(Amazon.RegionEndpoint.USEast1))
                 {
-                    BucketName = BUCKETNAME,
-                    Prefix = lang.ToUpper()
-                });
-
-                GetObjectRequest request = new GetObjectRequest();
-                request.BucketName = BUCKETNAME;
-                GetObjectResponse response;
-
-                foreach (S3Object s3Object in listObjectsAsyncResponse.S3Objects)
-                {
-                    request.Key = s3Object.Key;
-                    response = await s3Client.GetObjectAsync(request);
-
-                    StreamReader reader = new StreamReader(response.ResponseStream);
-
-                    Blogs.Add(new BlogModel()
+                    var listObjectsAsyncResponse = await s3Client.ListObjectsAsync(new ListObjectsRequest()
                     {
-                        blogTitle = s3Object.Key.ToString().Replace("_", " ").Replace(".txt", "").Replace("EN/", "").Replace("ES/",""),
-                        blogContent =  reader.ReadToEnd()
+                        BucketName = BUCKETNAME,
+                        Prefix = lang.ToUpper()
                     });
+
+                    GetObjectRequest request = new GetObjectRequest
+                    {
+                        BucketName = BUCKETNAME
+                    };
+
+                    GetObjectResponse response;
+
+                    foreach (S3Object s3Object in listObjectsAsyncResponse.S3Objects)
+                    {
+                        request.Key = s3Object.Key;
+                        response = await s3Client.GetObjectAsync(request);
+
+                        StreamReader reader = new StreamReader(response.ResponseStream);
+
+                        Posts.Add(new PostModel()
+                        {
+                            postTitle = s3Object.Key.ToString().Replace("_", " ").Replace(".txt", "").Replace("EN/", "").Replace("ES/", ""),
+                            postContent = reader.ReadToEnd(),
+                            postTime = s3Object.LastModified
+                        });
+                    }
                 }
             }
-            return Blogs;
-        }
-
-        // GET: Blog/Details/5
-        public ActionResult Details(int id)
-        {
-            return View();
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            return Posts;
         }
 
         // GET: Blog/Create
@@ -72,6 +74,11 @@ namespace SuperBlog.Controllers
             return View();
         }
 
+        public ActionResult Failure()
+        {
+            return View();
+        }
+
         // POST: Blog/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -79,74 +86,33 @@ namespace SuperBlog.Controllers
         {
             try
             {
-                Task.WaitAll(PostBlog(collection));
-                return RedirectToAction(nameof(Success));
+                var result = PostBlogPost(collection);
+
+                if(result.Result.HttpStatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    return RedirectToAction(nameof(Success));
+                }
+                else
+                    return RedirectToAction(nameof(Failure));
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                throw ex;
             }
         }
 
-        private async Task<IActionResult> PostBlog(IFormCollection collection)
+        private async Task<PutObjectResponse> PostBlogPost(IFormCollection collection)
         {
-            var s3Client = new AmazonS3Client();
+            var s3Client = new AmazonS3Client(Amazon.RegionEndpoint.USEast1);
             GetObjectRequest request = new GetObjectRequest();
 
-            await s3Client.PutObjectAsync(new PutObjectRequest()
+            return await s3Client.PutObjectAsync(new PutObjectRequest()
             {
-                ContentBody = collection["blogContent"],
+                ContentBody = collection["postContent"],
                 BucketName = BUCKETNAME,
-                Key = $"EN/{collection["blogTitle"].ToString().Replace(" ", "_")}.txt"
+                Key = $"EN/{collection["postTitle"].ToString().Replace(" ", "_")}.txt"
 
             });
-            return null;
-        }
-
-        // GET: Blog/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
-        }
-
-        // POST: Blog/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add update logic here
-
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
-
-        // GET: Blog/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
-
-        // POST: Blog/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                // TODO: Add delete logic here
-
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
         }
     }
 }

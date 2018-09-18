@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 
 namespace SuperBlog.Models
 {
-    public class BlogModel
+    public class PostModel
     {
-        public string blogTitle { get; set; }
-        public string blogContent { get; set; }
+        public string postTitle { get; set; }
+        public string postContent { get; set; }
+        public DateTime postTime { get; set; }
     }
 }
