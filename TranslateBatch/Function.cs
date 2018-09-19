@@ -20,6 +20,8 @@ namespace TranslateBatch
     public class Function
     {
         IAmazonS3 S3Client { get; set; }
+        private static readonly string[] languages = { "ES", "DE", "FR" };
+
 
         /// <summary>
         /// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
@@ -74,21 +76,23 @@ namespace TranslateBatch
 
                     using (var translateClient = new AmazonTranslateClient())
                     {
-                        var translateTextResponse = await translateClient.TranslateTextAsync(
+                        foreach (string language in languages)
+                        {
+                            var translateTextResponse = await translateClient.TranslateTextAsync(
                             new TranslateTextRequest()
                             {
                                 Text = content,
                                 SourceLanguageCode = "EN",
-                                TargetLanguageCode = "ES"
+                                TargetLanguageCode = language
                             });
 
-                        await S3Client.PutObjectAsync(new PutObjectRequest()
-                        {
-                            ContentBody = translateTextResponse.TranslatedText,
-                            BucketName = evnt.Records.First().S3.Bucket.Name,
-                            Key = evnt.Records.First().S3.Object.Key.Replace("EN", "ES")
-                        });
-
+                            await S3Client.PutObjectAsync(new PutObjectRequest()
+                            {
+                                ContentBody = translateTextResponse.TranslatedText,
+                                BucketName = evnt.Records.First().S3.Bucket.Name,
+                                Key = evnt.Records.First().S3.Object.Key.Replace("EN", language)
+                            });
+                        }
                     }
                     return "Complete";
                 }
