@@ -1,0 +1,30 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Transform" : "AWS::Serverless-2016-10-31",
+  "Description" : "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+
+  "Parameters" : {
+  },
+
+  "Conditions" : {
+  },
+
+  "Resources" : {
+
+    "TranslateFunction" : {
+      "Type" : "AWS::Serverless::Function",
+      "Properties": {
+	  	"FunctionName":"TranslateBatch",
+        "Handler": "TranslateBatch::TranslateBatch.Function::FunctionHandler",
+        "Runtime": "dotnetcore2.1",
+        "CodeUri": "",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+		  "AmazonS3FullAccess",
+		  "TranslateReadOnly"
+		]
+      }
+    }
+  }
+}
