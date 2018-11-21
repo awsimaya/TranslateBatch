@@ -74,7 +74,7 @@ namespace TranslateBatch
                     StreamReader reader = new StreamReader(response.ResponseStream);
                     content = reader.ReadToEnd();
 
-                    using (var translateClient = new AmazonTranslateClient())
+                    using (var translateClient = new AmazonTranslateClient(Amazon.RegionEndpoint.EUWest1))
                     {
                         foreach (string language in languages)
                         {
